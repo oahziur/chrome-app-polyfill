@@ -380,40 +380,30 @@ navigator.bluetooth.requestDevice = function(filters, options) {
       connectForServices: options.connectForServices || false,
     };
 
-    var subWindowUrl = new URL('request_device_window.html', importDocument.URL);
+    var resolved = false;
+    var requestDeviceInfo = {
+      filters: filters,
+      options: options,
+      origin: new URL(document.URL).origin,
+      originName: chrome.runtime.getManifest().name,
+      resolve: function(chromeDevice) {
+        resolved = true;
+        resolve(updateDevice(chromeDevice));
+      },
+      reject: function() {
+        resolved = true;
+        reject.apply(null, arguments);
+      },
+    };
 
-    chrome.app.window.create(subWindowUrl.pathname, {
-      id: "navigator.bluetooth.requestDevice",
-      innerBounds: {width: 500, height: 400},
-    }, function(createdWindow) {
-      if (chrome.runtime.lastError) {
-        reject(chrome.runtime.lastError.message);
-        return;
+    openDeviceSelectorDialog(requestDeviceInfo, function() {
+      if (!resolved) {
+        reject(new Error('NotFoundError'));
       }
-      var resolved = false;
-      createdWindow.contentWindow.requestDeviceInfo = {
-        filters: filters,
-        options: options,
-        origin: new URL(document.URL).origin,
-        originName: chrome.runtime.getManifest().name,
-        resolve: function(chromeDevice) {
-          resolved = true;
-          resolve(updateDevice(chromeDevice));
-        },
-        reject: function() {
-          resolved = true;
-          reject.apply(null, arguments);
-        },
-      };
-      createdWindow.onClosed.addListener(function() {
-        if (!resolved) {
-          reject(new Error('NotFoundError'));
-        }
-        chrome.bluetooth.stopDiscovery(function() {
-          chrome.runtime.lastError;  // Ignore errors.
-        });
-      })
-    })
+      chrome.bluetooth.stopDiscovery(function() {
+        chrome.runtime.lastError;  // Ignore errors.
+      });
+    });
   });
 };
 

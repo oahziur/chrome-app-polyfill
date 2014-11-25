@@ -17,6 +17,10 @@ limitations under the License.
 (function() {
 'use strict';
 
+var importDocument = document.currentScript.ownerDocument;
+var template = importDocument.querySelector('#device-selector-dialog')
+document.body.appendChild(document.importNode(template, true));
+
 if (!Array.prototype.findIndex) {
   Array.prototype.findIndex = function(callback, thisArg) {
     for (var i = 0; i < this.length; ++i) {
@@ -51,12 +55,12 @@ function uuidsMatchFilters(serviceUuids, filters) {
   });
 };
 
-function DeviceView(bluetoothDevice) {
+function DeviceView(bluetoothDevice, requestDeviceInfo) {
   var self = this;
 
   self.device = bluetoothDevice;
-  self.filters = window.requestDeviceInfo.filters;
-  self.options = window.requestDeviceInfo.options;
+  self.filters = requestDeviceInfo.filters;
+  self.options = requestDeviceInfo.options;
   self.address = self.device.address;
   self.updateFrom(bluetoothDevice);
   self.initialUuids = self.device.uuids;
@@ -108,20 +112,20 @@ DeviceView.prototype.updateFrom = function(sourceDevice) {
   }
 }
 
-// Run at load instead of immediately so that the chrome.app.window.create
-// callback can add window properties first.
-addEventListener('load', function () {
+window.openDeviceSelectorDialog = function(requestDeviceInfo, done) {
 
-  window.onerror = function(error) {
-    requestDeviceInfo.reject(error);
-    window.close();
-  }
+  document.querySelector('#device-selector-dialog').style.display = "inline";
 
-  var model = document.querySelector('#model');
+  var model = document.querySelector('#bluetooth-request-device-model');
+
+  var closeDialog = function() {
+    document.querySelector('#device-selector-dialog').style.display = "none";
+    done();
+  };
 
   model.cancelled = function() {
     requestDeviceInfo.reject(new Error('NotFoundError'));
-    window.close();
+    closeDialog();
   };
 
   model.selected = function() {
@@ -130,7 +134,7 @@ addEventListener('load', function () {
       return;
     }
     requestDeviceInfo.resolve(model.$.deviceSelector.selectedModel.device.device);
-    window.close();
+    closeDialog();
   }
 
   model.selectPrevious = function() {
@@ -145,7 +149,7 @@ addEventListener('load', function () {
 
   chrome.bluetooth.getDevices(function(devices) {
     model.devices = devices.map(function(btDevice) {
-      return new DeviceView(btDevice);
+      return new DeviceView(btDevice, requestDeviceInfo);
     });
 
     chrome.bluetooth.onDeviceAdded.addListener(function(device) {
@@ -153,7 +157,7 @@ addEventListener('load', function () {
       if (index != -1) {
         console.error('chrome.bluetooth.onDeviceAdded called for existing device:', device);
       }
-      model.devices.push(new DeviceView(device));
+      model.devices.push(new DeviceView(device, requestDeviceInfo));
     });
     chrome.bluetooth.onDeviceChanged.addListener(function(device) {
       var index = findDeviceIndexByAddress(model.devices, device);
@@ -184,6 +188,5 @@ addEventListener('load', function () {
       }
     });
   });
-
-});
+};
 })();
