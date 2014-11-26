@@ -112,14 +112,44 @@ DeviceView.prototype.updateFrom = function(sourceDevice) {
   }
 }
 
+
 window.openDeviceSelectorDialog = function(requestDeviceInfo, done) {
 
   document.querySelector('#device-selector-dialog').style.display = "inline";
 
   var model = document.querySelector('#bluetooth-request-device-model');
 
+  var onDeviceAddedListener = function(device) {
+    var index = findDeviceIndexByAddress(model.devices, device);
+    if (index != -1) {
+      console.error('chrome.bluetooth.onDeviceAdded called for existing device:', device);
+    }
+    model.devices.push(new DeviceView(device, requestDeviceInfo));
+  };
+
+  var onDeviceChangedListener = function(device) {
+    var index = findDeviceIndexByAddress(model.devices, device);
+    if (index == -1) {
+      console.error('chrome.bluetooth.onDeviceChanged called for non-existent device:', device);
+    } else {
+      model.devices[index].updateFrom(device);
+    }
+  };
+
+  var onDeviceRemovedListener = function(device) {
+    var index = findDeviceIndexByAddress(model.devices, device);
+    if (index == -1) {
+      console.error('chrome.bluetooth.onDeviceRemoved called for non-existent device:', device);
+    } else {
+      model.devices.splice(index, 1);
+    }
+  };
+
   var closeDialog = function() {
     document.querySelector('#device-selector-dialog').style.display = "none";
+    chrome.bluetooth.onDeviceAdded.removeListener(onDeviceAddedListener);
+    chrome.bluetooth.onDeviceChanged.removeListener(onDeviceChangedListener);
+    chrome.bluetooth.onDeviceRemoved.removeListener(onDeviceRemovedListener);
     done();
   };
 
@@ -151,30 +181,9 @@ window.openDeviceSelectorDialog = function(requestDeviceInfo, done) {
     model.devices = devices.map(function(btDevice) {
       return new DeviceView(btDevice, requestDeviceInfo);
     });
-
-    chrome.bluetooth.onDeviceAdded.addListener(function(device) {
-      var index = findDeviceIndexByAddress(model.devices, device);
-      if (index != -1) {
-        console.error('chrome.bluetooth.onDeviceAdded called for existing device:', device);
-      }
-      model.devices.push(new DeviceView(device, requestDeviceInfo));
-    });
-    chrome.bluetooth.onDeviceChanged.addListener(function(device) {
-      var index = findDeviceIndexByAddress(model.devices, device);
-      if (index == -1) {
-        console.error('chrome.bluetooth.onDeviceChanged called for non-existent device:', device);
-      } else {
-        model.devices[index].updateFrom(device);
-      }
-    });
-    chrome.bluetooth.onDeviceRemoved.addListener(function(device) {
-      var index = findDeviceIndexByAddress(model.devices, device);
-      if (index == -1) {
-        console.error('chrome.bluetooth.onDeviceRemoved called for non-existent device:', device);
-      } else {
-        model.devices.splice(index, 1);
-      }
-    });
+    chrome.bluetooth.onDeviceAdded.addListener(onDeviceAddedListener);
+    chrome.bluetooth.onDeviceChanged.addListener(onDeviceChangedListener);
+    chrome.bluetooth.onDeviceRemoved.addListener(onDeviceRemovedListener);
   });
 
   chrome.bluetooth.stopDiscovery(function() {
