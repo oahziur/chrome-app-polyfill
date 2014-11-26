@@ -63,7 +63,7 @@ function DeviceView(bluetoothDevice, requestDeviceInfo) {
   self.options = requestDeviceInfo.options;
   self.address = self.device.address;
   self.updateFrom(bluetoothDevice);
-  self.initialUuids = self.device.uuids;
+  self.initialUuids = self.device.uuids || [];
   self.allUuids = self.initialUuids;
   self.matchesFilters = uuidsMatchFilters(self.initialUuids, self.filters);
   self.initiallyConnected = self.device.connected;
