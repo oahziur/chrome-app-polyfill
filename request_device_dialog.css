@@ -33,6 +33,10 @@ h1 {
     color: #888;
 }
 
+#deviceSelectorDialog {
+    top: 0;
+}
+
 core-icon {
     color: #1976d2;
     margin-right: 32px;
