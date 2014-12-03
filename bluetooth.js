@@ -552,10 +552,12 @@ limitations under the License.
   // Events:
 
   function BluetoothEvent(type, initDict) {
-    this.type = type;
+    var e = Event.call(this, type, initDict) || this;
+    e.type = type;
     initDict = initDict || {};
-    this.bubbles = !!initDict.bubbles;
-    this.cancelable = !!initDict.cancelable;
+    e.bubbles = !!initDict.bubbles;
+    e.cancelable = !!initDict.cancelable;
+    return e;
   };
   BluetoothEvent.prototype = {
     __proto__: Event.prototype,
@@ -635,4 +637,3 @@ limitations under the License.
     });
   };
 })();
-
