@@ -1,5 +1,3 @@
-"use strict";
-
 /*
 Copyright 2014 Google Inc. All rights reserved.
 
@@ -17,7 +15,6 @@ limitations under the License.
 */
 
 (function () {
-  "use strict";
 
   var uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
