@@ -547,24 +547,9 @@ limitations under the License.
   };
 
   // Events:
-
-  function BluetoothEvent(type, initDict) {
-    var e = Event.call(this, type, initDict) || this;
-    e.type = type;
-    initDict = initDict || {};
-    e.bubbles = !!initDict.bubbles;
-    e.cancelable = !!initDict.cancelable;
-    return e;
-  };
-  BluetoothEvent.prototype = {
-    __proto__: Event.prototype,
-    target: null,
-    currentTarget: null,
-    eventPhase: Event.NONE };
-
   chrome.bluetoothLowEnergy.onCharacteristicValueChanged.addListener(function (chromeCharacteristic) {
     updateCharacteristic(chromeCharacteristic).then(function (characteristic) {
-      var event = new BluetoothEvent("characteristicvaluechanged");
+      var event = new Event("characteristicvaluechanged");
       event.characteristic = characteristic;
       event.value = characteristic.value;
       navigator.bluetooth.dispatchEvent(event, characteristic);
