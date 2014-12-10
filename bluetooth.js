@@ -96,6 +96,8 @@ limitations under the License.
       var self = this;
       return callChromeFunction(chrome.bluetoothLowEnergy.connect, self.address, { persistent: false }).then(function () {
         self._connected = true;
+      }, function (e) {
+        throw NamedError("NetworkError", self + ".connect() failed: " + e);
       });
     },
 
@@ -103,6 +105,8 @@ limitations under the License.
       var self = this;
       return callChromeFunction(chrome.bluetoothLowEnergy.disconnect, self.address).then(function () {
         self._connected = false;
+      }, function (e) {
+        throw NamedError("NetworkError", self + ".disconnect() failed: " + e);
       });
     },
 
@@ -119,7 +123,12 @@ limitations under the License.
 
     getService: function (serviceUuid) {
       return firstOrNull(this.getAllServices([serviceUuid]));
-    } });
+    },
+
+    toString: function () {
+      return self.address;
+    }
+  });
 
   function BluetoothGattService(webBluetoothDevice, chromeBluetoothService) {
     this._device = webBluetoothDevice;
@@ -385,7 +394,7 @@ limitations under the License.
   var dispatchSymbol = Symbol("dispatch");
   navigator.bluetooth.dispatchEvent = function (event, target) {
     if (event[dispatchSymbol]) {
-      ThrowName("InvalidStateError");
+      throw NamedError("InvalidStateError");
     }
     event[dispatchSymbol] = true;
     try {
@@ -422,7 +431,7 @@ limitations under the License.
             } else {
               var uuid = serviceNames[serviceUuid];
               if (!uuid) {
-                throw new Error("\"" + serviceUuid + "\" is not a known service name.");
+                throw NamedError("SyntaxError", "\"" + serviceUuid + "\" is not a known service name.");
               }
               return uuid;
             }
@@ -450,7 +459,7 @@ limitations under the License.
 
       var dialogClosedListener = function () {
         if (!resolved) {
-          reject(new Error("NotFoundError"));
+          reject(NamedError("NotFoundError", "Cancelled"));
         }
         chrome.bluetooth.stopDiscovery(function () {
           chrome.runtime.lastError; // Ignore errors.
@@ -547,9 +556,25 @@ limitations under the License.
   };
 
   // Events:
+
+  function BluetoothEvent(type, initDict) {
+    initDict = initDict || {};
+    var e = new Event(type, initDict);
+    e.__proto__ = this.__proto__;
+    for (var key in initDict) {
+      e[key] = initDict[key];
+    }
+    return e;
+  };
+  BluetoothEvent.prototype = {
+    __proto__: Event.prototype,
+    target: null,
+    currentTarget: null,
+    eventPhase: Event.NONE };
+
   chrome.bluetoothLowEnergy.onCharacteristicValueChanged.addListener(function (chromeCharacteristic) {
     updateCharacteristic(chromeCharacteristic).then(function (characteristic) {
-      var event = new Event("characteristicvaluechanged");
+      var event = new BluetoothEvent("characteristicvaluechanged");
       event.characteristic = characteristic;
       event.value = characteristic.value;
       navigator.bluetooth.dispatchEvent(event, characteristic);
@@ -593,10 +618,10 @@ limitations under the License.
     });
   };
 
-  function ThrowName(name) {
-    var e = new Error();
+  function NamedError(name, message) {
+    var e = new Error(message || "");
     e.name = name;
-    throw e;
+    return e;
   };
 
   // Calls fn(arguments, callback) and returns a Promise that resolves when
